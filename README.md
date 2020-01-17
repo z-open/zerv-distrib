@@ -34,14 +34,11 @@ On the server that needs to initiate a process thru a queue, create a function t
 
 ```javascript
 async function requestSfPermissionUpdate(tenantId, user) {
-    if (!(await permissionConfigurationService.getPermissionConfig(tenantId)).isCrmPermissionEnabled) {
-        return 'irrelevant';
-    }
+
     const process = await zerv.submitProcess(tenantId, 'UpdateSfPermission', `tenant${tenantId}/${user.id}`,{tenantId, user});
     // check if we need to wait (if there is no permission let's wait for process to complete)
     // otherwise use the permission we already know then the new ones will be pushed over the network
     if (! await opportunityPermissionService.hasOpportunityPermissions(tenantId, user) ) {
-        // when zerv received a notification of completion for this process, it will run process.resolve
         return zerv.waitForCompletion(process)
         .then(()=> 'done')
         .catch(err => {
@@ -90,7 +87,10 @@ __addProcessType(name, processImplementation, options)__
 
 This function declares which process types are handle by the server that will be monitoring the queue.
 
-the processImplementation must return an object with the following properties 
+the processImplementation receives an handle.
+the handle is practical to update the process status visible in logs (setProgressDescription) and to test if the server is shutting down.
+
+the process implementation must return an object with the following properties 
 - {Object} data: data to return to the requester
 - {String} description: message about its completion to show in logs.
 
@@ -113,10 +113,11 @@ No other process is actually created.
 
 ### To Implement
 - NO UNIT TESTS!!!!!
+- implement shutdownServer, shutdownCluster which would do a graceful shutdown waiting for managed process and zerv api calls to complete to prevent corruption (very needed when releasing app version).
 - currently queue is handled via a custom implementation using transaction row locks but it should use redis locking mechanism
 - Should allow custom load balancing strategies (ex based on tenant restrictions, one tenant could have more allocated slot to run processes than another)
-- large result should not be broadcasted but store in redis, and process should return a cursor id
+- large result should not be broadcasted but store in redis, and process should return a cursor id (similar to SF)
 - have an option to restart a process a limited number of time if it crashes. Currently it will keep retrying. In theory developer should cache all exceptions in their implemented process. On the other hand, the infrastructure should restart down servers so there is little chance to go to infinite loop.
-- waitForCompletion could have a timeout to give up, currently it will wait even though the process restarted after crashing 
+- waitForCompletion could have a timeout to give up. Currently waitForCompletion will wait until the process completes even though it might have crashed and was restarted by a different server.
 
 
