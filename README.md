@@ -120,5 +120,3 @@ No other process is actually created.
 - large result should not be broadcasted but store in redis, and process should return a cursor id (similar to SF)
 - have an option to restart a process a limited number of times if it crashes. Currently it will keep retrying. In theory developer should cache all exceptions in their implemented process. On the other hand, the infrastructure should restart down servers so there is little chance to go to infinite loop.
 - waitForCompletion could have a timeout to give up. Currently waitForCompletion will wait until the process completes even though it might have crashed and was restarted by a different server.
-
-
