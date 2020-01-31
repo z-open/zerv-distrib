@@ -5,10 +5,12 @@
 ### Scope
 Simple process load distribution in a Zerv Server cluster to improve responsiveness of the main Zerv socket application servers.
 
+This is a proof of concept that demonstrates that distributing processes in a Zerv environment is easily attainable and offers major performance improvement over the whole Zerv cluster in a few lines of code.
+
+This initial library code is not yet unit tested.
 
 ### pre-requisite
-this relies on zerv-core and zerv-sync
-
+This relies on zerv-core and zerv-sync libraries and redis.
 
 ### Principle
 In order to free resources on the main socket servers (public facing application servers), zerv can easily distribute the load on the zerv cluster.
@@ -75,6 +77,12 @@ function updateOpportunityPermissions(tenantId, processHandle, params) {
 
 ### Api
 
+__setCustomProcessImpl(processService)__
+
+The library functionalities rely on accessing a queue. The queue must implement a lock mechanism to prevent multiple servers to launch the same process. The objective is to have the queue implemented with Redis. But for the sake of demonstrating distribution capabilities, a quick custom implementation must be provided. You will see in the code that it takes have this implemented in Postgres.
+
+More details will be added about this though a custom implementation will no longer be necessary as soon as Redis impl is completed.
+
 __monitorQueue(serverUnigName,capacity)__
 
 This function launches the monitoring of the process queue by the current server.
@@ -120,3 +128,7 @@ No other process is actually created.
 - large result should not be broadcasted but store in redis, and process should return a cursor id (similar to SF)
 - have an option to restart a process a limited number of times if it crashes. Currently it will keep retrying. In theory developer should cache all exceptions in their implemented process. On the other hand, the infrastructure should restart down servers so there is little chance to go to infinite loop.
 - waitForCompletion could have a timeout to give up. Currently waitForCompletion will wait until the process completes even though it might have crashed and was restarted by a different server.
+- Add option to distribute zerv api server apis (api route can be easily distributed)
+- Add ability to change zerv worker capacity in real time
+- create a real time zerv monitor of the processes distribution (relies on subscription)
+- reduce notification amount data broadcasted thru redis on a regular basis (granular notifications)
