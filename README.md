@@ -118,11 +118,17 @@ This function waits for the completion of a process.
 Processes have a uniq name. If another process with the same name is submitted again while the first one is not completed, the new submission will use the existing process and wait for it to complete.
 No other process is actually created.
 
+__shutdown(delay)__
+The function executes a safe and graceful shutdown of the whole zerv cluster.
+It will exit all zerv instance nodes when all activities (api calls or started processes) completed and will not execute any further activity.
+```javascript
+zerv.shutdown(10);
+```
 
 ### To Implement
 
-- NO UNIT TESTS!!!!!
-- implement shutdownServer, shutdownCluster which would do a graceful shutdown waiting for managed process and zerv api calls to complete to prevent corruption (very needed when releasing app version).
+- NO UNIT TESTS YET!!!!!
+- implement shutdownServer of a specific server remotely in addition to the existing shutdown function
 - currently queue is handled via a custom implementation using transaction row locks but it should use redis locking mechanism
 - Should allow custom load balancing strategies (ex based on tenant restrictions, one tenant could have more allocated slot to run processes than another)
 - large result should not be broadcasted but store in redis, and process should return a cursor id (similar to SF)
