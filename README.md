@@ -56,11 +56,11 @@ On the server that will consume this process (it could be the same as the server
 Then the server will monitor the queur.
 
 ```javascript
-function monitorQueue(serverId) {
+function monitorQueue(serverId, port) {
     zerv.addProcessType('UpdateSfPermission', sfPermisionService.updateOpportunityPermissions, {
         gracePeriodInMins: 5, // if in 5 minutes the process did not come back, it must be crashed. it will restart by itself
     });
-    zerv.monitorQueue(serverId, process.env.MAX_CAPACITY || 5);
+    zerv.monitorQueue(serverId, port,  process.env.MAX_CAPACITY || 5);
 }
 
 
@@ -79,13 +79,21 @@ function updateOpportunityPermissions(tenantId, processHandle, params) {
 
 __setCustomProcessImpl(processService)__
 
-The library functionalities rely on accessing a queue. The queue must implement a lock mechanism to prevent multiple servers to launch the same process. The objective is to have the queue implemented with Redis. But for the sake of demonstrating distribution capabilities, a quick custom implementation must be provided. You will see in the code that it takes have this implemented in Postgres.
+The library functionalities rely on accessing a queue. The queue implements a Redis lock mechanism to prevent multiple servers to launch the same process. the queue persistence must be implemented in processService with the following functions:
+    createOne,
+    updateOne,
+    findOneByTenantIdAndProcessId,
+    findOneByTenantIdAndTypeAndNameAndInStatusList,
+    findAllInStatusListAndInProcessTypeList,
+    findAll.
 
-More details will be added about this though a custom implementation will no longer be necessary as soon as Redis impl is completed.
+More details will be added about this.
 
-__monitorQueue(serverUnigName,capacity)__
+__monitorQueue(serverUnigName, port, capacity)__
 
 This function launches the monitoring of the process queue by the current server.
+
+Provide any port the server might be listening to.
 
 capacity is key. the algorithm is currently simple. It limits the number of processes run by the server.
 
@@ -129,7 +137,6 @@ zerv.shutdown(10);
 
 - NO UNIT TESTS YET!!!!!
 - implement shutdownServer of a specific server remotely in addition to the existing shutdown function
-- currently queue is handled via a custom implementation using transaction row locks but it should use redis locking mechanism
 - Should allow custom load balancing strategies (ex based on tenant restrictions, one tenant could have more allocated slot to run processes than another)
 - large result should not be broadcasted but store in redis, and process should return a cursor id (similar to SF)
 - have an option to restart a process a limited number of times if it crashes. Currently it will keep retrying. In theory developer should cache all exceptions in their implemented process. On the other hand, the infrastructure should restart down servers so there is little chance to go to infinite loop.
