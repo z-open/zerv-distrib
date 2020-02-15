@@ -23,6 +23,8 @@
     },
     "license": "MIT",
     "dependencies": {
+        "ioredis": "4.14.1",
+        "ioredis-lock": "4.0.0",
         "ip": "1.1.5",
         "lodash": "4.17.15",
         "moment": "2.24.0",
@@ -32,7 +34,7 @@
     "devDependencies": {
         "eslint": "6.8.0",
         "eslint-config-google": "0.14.0",
-        "jasmine": "^.5.0",
+        "jasmine": "3.5.0",
         "zerv-core": "git://github.com/z-open/zerv-core#1.2.0",
         "zerv-sync": "git://github.com/z-open/zerv-sync#1.1.6"
     }
