@@ -1,6 +1,6 @@
 {
     "name": "zerv-distrib",
-    "version": "0.0.1",
+    "version": "0.2.0",
     "description": "Zerv module providing process load distribution support",
     "main": "lib/zerv-distrib.js",
     "keywords": [
@@ -18,20 +18,24 @@
     },
     "scripts": {
         "test": "./node_modules/jasmine/bin/jasmine.js",
-        "eslint": "./node_modules/eslint/bin/eslint.js --fix **/*.js"
+        "eslint": "./node_modules/eslint/bin/eslint.js **/*.js",
+        "eslintfix": "./node_modules/eslint/bin/eslint.js --fix **/*.js"
     },
     "license": "MIT",
     "dependencies": {
+        "ioredis": "4.14.1",
+        "ioredis-lock": "4.0.0",
+        "ip": "1.1.5",
         "lodash": "4.17.15",
         "moment": "2.24.0",
         "uuid": "3.4.0",
-        "zlog4js": "^1.0.5"
+        "zlog4js": "1.0.5"
     },
     "devDependencies": {
-        "eslint": "^6.8.0",
+        "eslint": "6.8.0",
         "eslint-config-google": "0.14.0",
-        "jasmine": "^3.5.0",
-        "zerv-core": "git://github.com/z-open/zerv-core#1.1.11",
+        "jasmine": "3.5.0",
+        "zerv-core": "git://github.com/z-open/zerv-core#1.2.0",
         "zerv-sync": "git://github.com/z-open/zerv-sync#1.1.6"
     }
 }
