@@ -10,7 +10,7 @@ This is a proof of concept that demonstrates that distributing processes in a Ze
 This initial library code is not yet unit tested.
 
 ### pre-requisite
-This relies on zerv-core and zerv-sync libraries and redis.
+This relies on both zerv-core and zerv-sync libraries as well as redis to store the process queue.
 
 ### Principle
 In order to free resources on the main socket servers (public facing application servers), zerv can easily distribute the load on the zerv cluster.
@@ -79,14 +79,7 @@ function updateOpportunityPermissions(tenantId, processHandle, params) {
 
 __setCustomProcessImpl(processService)__
 
-The library functionalities rely on accessing a queue. The queue implements a Redis lock mechanism to prevent multiple servers to launch the same process. the queue persistence must be implemented in processService with the following functions:
-    createOne,
-    updateOne,
-    findOneByTenantIdAndProcessId,
-    findOneByTenantIdAndTypeAndNameAndInStatusList,
-    findAllInStatusListAndInProcessTypeList,
-    findAll.
-
+@deprecated
 More details will be added about this.
 
 __monitorQueue(serverUnigName, port, capacity)__
