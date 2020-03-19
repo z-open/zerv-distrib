@@ -41,7 +41,6 @@ describe('ProcessMonitorClientService', () => {
     zerv.notifyUpdate = _.noop;
     service.setZervDependency(zerv);
     processService.setZervDependency(zerv);
-    //queueLockService.setZervDependency(zerv);
 
     spyOn(ioRedisLock, 'createLock').and.callFake(() => {
       let lock;
