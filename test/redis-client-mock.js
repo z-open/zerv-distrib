@@ -10,7 +10,12 @@ module.exports = class RedisClientMock {
     if (!queue) {
       _.set(this.cache, list, [value]);
     } else {
-      queue.push(value);
+      const pos = _.findIndex(queue, (val) => JSON.parse(val).id === key);
+      if (pos >= 0) {
+        queue[pos] = value;
+      } else {
+        queue.push(value);
+      }
     }
   }
 
@@ -23,10 +28,14 @@ module.exports = class RedisClientMock {
   }
 
   hvals(list) {
-    return _.get(this.cache, list);
+    return _.get(this.cache, list, []);
   }
 
   rpush(list, value) {
     this.hset(list, '', value);
+  }
+
+  lrange(list) {
+    return this.hvals(list);
   }
 };
