@@ -5,6 +5,7 @@ const processMonitorClientService = require('../lib/process-monitor-client.servi
 const processService = require('../lib/process.service');
 const ioRedisLock = require('ioredis-lock');
 const RedisClientMock= require('./redis-client-mock');
+const serverStatusService = require('../lib/server-status.service');
 
 
 describe('ProcessMonitorServerService', () => {
@@ -64,6 +65,8 @@ describe('ProcessMonitorServerService', () => {
                 }
             };
         });
+
+        spyOn(serverStatusService, 'getServerId').and.returnValue(spec.serverId1);
     });
 
     describe('_selectNextProcessesToRun function', () => {
@@ -96,7 +99,7 @@ describe('ProcessMonitorServerService', () => {
             service._setCapacityProfile(2);
 
 
-            const next = await service._selectNextProcessesToRun(spec.serverId1);
+            const next = await service._selectNextProcessesToRun();
             expect(next[0]).toEqual(jasmine.objectContaining({
                 id: jasmine.any(String),
                 createdDate: jasmine.any(Date),
@@ -121,7 +124,7 @@ describe('ProcessMonitorServerService', () => {
             await processMonitorClientService.submitProcess(spec.tenantId, spec.type, spec.name, {});
             await processMonitorClientService.submitProcess(spec.tenantId, spec.type2, spec.name, {});
             service._setCapacityProfile(2);
-            const next = await service._selectNextProcessesToRun(spec.serverId1);
+            const next = await service._selectNextProcessesToRun();
 
             expect(next.length).toEqual(2);
 
@@ -169,7 +172,7 @@ describe('ProcessMonitorServerService', () => {
             await processMonitorClientService.submitProcess(spec.tenantId, spec.type, spec.name, {});
             await processMonitorClientService.submitProcess(spec.tenantId, spec.type2, spec.name, {});
             service._setCapacityProfile(2);
-            const next = await service._selectNextProcessesToRun(spec.serverId1);
+            const next = await service._selectNextProcessesToRun();
 
             expect(next.length).toEqual(2);
 
@@ -216,8 +219,8 @@ describe('ProcessMonitorServerService', () => {
         it('should complete the process successfully', async () => {
             await processMonitorClientService.submitProcess(spec.tenantId, spec.type, spec.name, {});
             service._setCapacityProfile(2);
-            const next = await service._selectNextProcessesToRun(spec.serverId1);
-            const process = await service._executeProcess(next[0], spec.serverId1);
+            const next = await service._selectNextProcessesToRun();
+            const process = await service._executeProcess(next[0]);
 
             expect(process).toEqual(jasmine.objectContaining({
                 id: jasmine.any(String),
@@ -242,8 +245,8 @@ describe('ProcessMonitorServerService', () => {
         it('should fail to complete the process', async () => {
             await processMonitorClientService.submitProcess(spec.tenantId, spec.type3, spec.name, {});
             service._setCapacityProfile(2);
-            const next = await service._selectNextProcessesToRun(spec.serverId1);
-            const process = await service._executeProcess(next[0], spec.serverId1);
+            const next = await service._selectNextProcessesToRun();
+            const process = await service._executeProcess(next[0]);
 
             expect(process).toEqual(jasmine.objectContaining({
                 id: jasmine.any(String),
@@ -264,5 +267,66 @@ describe('ProcessMonitorServerService', () => {
                 error: {message: 'FAIL', description: undefined}
             }));
         });
+    });
+
+    xdescribe('_checkIfProcessIsNotStalled', () => {
+        it('should not throw any error as process is valid', () => {
+
+        });
+        it('should throw an error when process gracePeriod is over', () => {
+
+        });
+        it('should throw an error when process is not handled by the server owner', () => {
+
+        });
+
+    });
+
+    describe('_runNextProcesses function', () => {
+
+        beforeEach(() => {
+            service._setCapacityProfile(2);
+            spyOn(service, '_scheduleToCheckForNewProcessResquests');
+            spyOn(service,'_runNextProcesses').and.callThrough();
+        });
+
+        it('should tract the process execution in the server active process map to track the load', async () => {
+            spyOn(service, '_executeProcess').and.callFake(() => {
+                expect(service._getActiveProcesses().length).toBe(1);
+                return 'completed way or another';
+            });
+
+            await processMonitorClientService.submitProcess(spec.tenantId, spec.type, spec.name, {});
+
+            expect(service._getActiveProcesses().length).toBe(0);
+            await service._runNextProcesses();
+        });
+
+        it('should indicate that the queue is being processed to reduce access to the queue', async () => {
+            expect(service._waitForProcessingQueue).toBeNull();
+            const promise = service._runNextProcesses();
+            expect(service._waitForProcessingQueue).not.toBeNull();
+            expect(service._waitForProcessingQueue).toBeInstanceOf(Promise);
+            await promise;
+            expect(service._waitForProcessingQueue).toBeNull();
+        });
+
+        it('should not retry to check for new processes since the trigger is a notification', async () => {
+            expect(service._getActiveProcesses().length).toBe(0);
+            await service._runNextProcesses();
+            expect(service._scheduleToCheckForNewProcessResquests).not.toHaveBeenCalled();     
+        });
+
+        it('should schedule and check the queue as soon as a process completes', async () => {
+            spyOn(service, '_executeProcess').and.returnValue('completed way or another');
+            service._scheduleToCheckForNewProcessResquests.and.callThrough();
+            await processMonitorClientService.submitProcess(spec.tenantId, spec.type, spec.name, {});
+      
+            expect(service._getActiveProcesses().length).toBe(0);
+            await service._runNextProcesses();
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(1);
+            expect(service._runNextProcesses).toHaveBeenCalledTimes(2);
+        });
+
     });
 });
