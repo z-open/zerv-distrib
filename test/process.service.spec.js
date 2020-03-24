@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const zerv = require('zerv-core');
-const service = require('../lib/process.service');
+const service = require('../lib/queue-process.service');
 const moment = require('moment');
 const RedisClientMock = require('./redis-client-mock');
 
@@ -39,7 +39,7 @@ describe('ProcessService', () => {
 
 
     it('createOne function should set the process to in progress', async () => {
-        const newProcess = new service.TenantProcess({
+        const newProcess = new service.QueueProcess({
             type: 'doSomething',
             name: null,
             tenantId: 'tenantId1',
@@ -82,7 +82,7 @@ describe('ProcessService', () => {
         beforeEach(async () => {
             process = await service.createOne(
                 tenantId,
-                new service.TenantProcess({
+                new service.QueueProcess({
                     type: 'doSomething',
                     name: null,
                     tenantId: 'tenantId1',

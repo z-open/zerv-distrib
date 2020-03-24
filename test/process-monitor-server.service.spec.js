@@ -4,7 +4,7 @@ const moment = require('moment');
 const zerv = require('zerv-core');
 const service = require('../lib/process-monitor-server.service');
 const processMonitorClientService = require('../lib/process-monitor-client.service');
-const processService = require('../lib/process.service');
+const queueProcessService = require('../lib/queue-process.service');
 const ioRedisLock = require('ioredis-lock');
 const RedisClientMock= require('./redis-client-mock');
 const serverStatusService = require('../lib/server-status.service');
@@ -29,7 +29,7 @@ describe('ProcessMonitorServerService', () => {
         zerv.notifyCreation = _.noop;
         zerv.notifyUpdate = _.noop;
         processMonitorClientService.setZervDependency(zerv);
-        processService.setZervDependency(zerv);
+        queueProcessService.setZervDependency(zerv);
         service.setZervDependency(zerv);
 
         service.addProcessType(spec.type, (tenantId, processHandle, params) => ({

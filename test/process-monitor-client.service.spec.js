@@ -1,7 +1,7 @@
 const _ = require('lodash');
 const zerv = require('zerv-core');
 const service = require('../lib/process-monitor-client.service');
-const processService = require('../lib/process.service');
+const queueProcessService = require('../lib/queue-process.service');
 const ioRedisLock = require('ioredis-lock');
 const moment = require('moment');
 const RedisClientMock= require('./redis-client-mock');
@@ -40,7 +40,7 @@ describe('ProcessMonitorClientService', () => {
         zerv.notifyCreation = _.noop;
         zerv.notifyUpdate = _.noop;
         service.setZervDependency(zerv);
-        processService.setZervDependency(zerv);
+        queueProcessService.setZervDependency(zerv);
 
         spyOn(ioRedisLock, 'createLock').and.callFake(() => {
             let lock, releaseLock;
