@@ -1,4 +1,6 @@
 const _ = require('lodash');
+const moment = require('moment');
+
 const zerv = require('zerv-core');
 const service = require('../lib/process-monitor-server.service');
 const processMonitorClientService = require('../lib/process-monitor-client.service');
@@ -67,6 +69,34 @@ describe('ProcessMonitorServerService', () => {
         });
 
         spyOn(serverStatusService, 'getServerId').and.returnValue(spec.serverId1);
+    });
+
+
+    describe('monitorQueue function', () => {
+
+        beforeEach(() => {
+            spyOn(serverStatusService, 'createOne');
+            spyOn(service,'_listenProcessQueueForNewRequests');
+            spyOn(serverStatusService, 'notifyServerStatusPeriodically');
+        });
+
+        it('should start monitoring the queue when capacity profile is provided', () => {
+            service.monitorQueue('ServerPlus', 'v3.12', 10);
+            expect(service._listenProcessQueueForNewRequests).toHaveBeenCalled();
+        });
+        it('should not monitor the queue when capacity profile is 0', () => {
+            service.monitorQueue('ServerPlus', 'v3.12', 0);
+            expect(service._listenProcessQueueForNewRequests).not.toHaveBeenCalled();
+        });
+
+        it('should launch scheduler to notify server status periodically', () => {
+            service.monitorQueue('ServerPlus', 'v3.12', 0, { serverStayAliveInSecs: 10, serverStayAliveTimeoutInSecs: 30});
+            expect(serverStatusService.notifyServerStatusPeriodically).toHaveBeenCalled();
+            expect(serverStatusService.notifyServerStatusPeriodically).toHaveBeenCalledWith(
+                'ServerPlus', 
+                { appVersion: 'v3.12', serverStayAliveInSecs: 10, serverStayAliveTimeoutInSecs: 30 }
+            );
+        });
     });
 
     describe('_selectNextProcessesToRun function', () => {
@@ -306,7 +336,7 @@ describe('ProcessMonitorServerService', () => {
             expect(service._waitForProcessingQueue).toBeNull();
             const promise = service._runNextProcesses();
             expect(service._waitForProcessingQueue).not.toBeNull();
-            expect(service._waitForProcessingQueue).toBeInstanceOf(Promise);
+            expect(service._waitForProcessingQueue).toEqual(jasmine.any(Promise));
             await promise;
             expect(service._waitForProcessingQueue).toBeNull();
         });
@@ -329,4 +359,119 @@ describe('ProcessMonitorServerService', () => {
         });
 
     });
+
+    describe('_listenProcessQueueForNewRequests function', () => {
+
+        let onChanges;
+
+        beforeEach(() => {
+            jasmine.clock().uninstall();
+            jasmine.clock().install();
+            const baseTime = moment().year(2020).month(12).date(25);
+            baseTime.startOf('day');
+            jasmine.clock().mockDate(baseTime.toDate());
+        });
+    
+        afterEach(() => {
+            jasmine.clock().uninstall();
+        });
+
+        beforeEach(() => {
+            onChanges = {};
+            spyOn(service, '_scheduleToCheckForNewProcessResquests');
+            spyOn(zerv, 'notifyCreation').and.callFake(notifyCreation);
+            spyOn(zerv, 'notifyUpdate').and.callFake(notifyUpdate);
+            spyOn(zerv, 'onChanges').and.callFake((event, fn) => onChanges[event] = fn);
+        });
+
+        it('should launch the processing of the queue in a few seconds', async () => {
+            service._setCapacityProfile(2);
+            service._listenProcessQueueForNewRequests();
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(0);
+            jasmine.clock().tick(5*1000);
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(1);
+        });
+
+        it('should launch the processing of the queue on a regular basis', async () => {
+            service._setCapacityProfile(2);
+            service._listenProcessQueueForNewRequests();
+            jasmine.clock().tick(5*1000);
+            jasmine.clock().tick(60*1000);
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(2);
+            jasmine.clock().tick(60*1000);
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(3);
+            jasmine.clock().tick(60*1000);
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(4);
+
+        });
+
+        it('should launch the processing of the queue when a new process is posted (status pending)', async () => {
+            service._setCapacityProfile(2);
+            service._listenProcessQueueForNewRequests();
+            const process = await processMonitorClientService.submitProcess(spec.tenantId, spec.type, spec.name, {});
+            expect(process.status).toBe('pending');
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(1);
+
+        });
+
+        it('should NOT launch the processing of the queue when a process is updated', () => {
+            service._setCapacityProfile(2);
+            service._listenProcessQueueForNewRequests();
+            notifyUpdate(spec.tenantId, 'TENANT_PROCESS_DATA', {id:'someprocessId', status: 'in progress'});
+            expect(service._scheduleToCheckForNewProcessResquests).toHaveBeenCalledTimes(0);
+        });
+
+        function notifyCreation(tenantId, dataEvent, obj, options) {
+            const fn = onChanges[dataEvent];
+            fn && fn(tenantId, obj, 'create');
+        }
+        function notifyUpdate(tenantId, dataEvent, obj, options) {
+            const fn = onChanges[dataEvent];
+            fn && fn(tenantId, obj, 'update');
+        }
+    });
+
+    describe('_scheduleToCheckForNewProcessResquests function', () => {
+        it('should launch the processing of the queue if the queue is not being processed', () => {
+            spyOn(service,'_runNextProcesses');
+            service._waitForProcessingQueue = null;
+            service._scheduleToCheckForNewProcessResquests();
+            expect(service._runNextProcesses).toHaveBeenCalled();
+        });
+
+        it('should NOT launch the processing of the queue again since _waitForProcessingQueue was set', async () => {
+            spyOn(service,'_runNextProcesses');
+            let waitDone;
+            service._waitForProcessingQueue = new Promise((resolve) => waitDone = resolve);
+            const promise = service._scheduleToCheckForNewProcessResquests();
+            expect(service._runNextProcesses).not.toHaveBeenCalled();
+            waitDone();
+
+            // queue is already being processed
+            service._waitForProcessingQueue = Promise.resolve();
+            // not need to check the queue
+            await promise;
+            expect(service._runNextProcesses).toHaveBeenCalledTimes(0);
+        });
+
+        it('should launch the processing of the queue again since _waitForProcessingQueue was reset', async () => {
+            spyOn(service,'_runNextProcesses');
+            let waitDone;
+            service._waitForProcessingQueue = new Promise((resolve) => waitDone = resolve);
+            const promise = service._scheduleToCheckForNewProcessResquests();
+            expect(service._runNextProcesses).not.toHaveBeenCalled();
+            waitDone();
+
+            // queue is not currently in process
+            service._waitForProcessingQueue = null;
+            // need to check the queue again (means processes were received by not handled during )
+            await promise;
+            expect(service._runNextProcesses).toHaveBeenCalledTimes(1);
+        });
+
+    });
+
+
 });
+
+
