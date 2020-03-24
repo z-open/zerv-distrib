@@ -81,21 +81,12 @@ describe('ProcessMonitorServerService', () => {
         });
 
         it('should start monitoring the queue when capacity profile is provided', () => {
-            service.monitorQueue('ServerPlus', 'v3.12', 10);
+            service.monitorQueue(10);
             expect(service._listenProcessQueueForNewRequests).toHaveBeenCalled();
         });
         it('should not monitor the queue when capacity profile is 0', () => {
-            service.monitorQueue('ServerPlus', 'v3.12', 0);
+            service.monitorQueue(0);
             expect(service._listenProcessQueueForNewRequests).not.toHaveBeenCalled();
-        });
-
-        it('should launch scheduler to notify server status periodically', () => {
-            service.monitorQueue('ServerPlus', 'v3.12', 0, { serverStayAliveInSecs: 10, serverStayAliveTimeoutInSecs: 30});
-            expect(serverStatusService.notifyServerStatusPeriodically).toHaveBeenCalled();
-            expect(serverStatusService.notifyServerStatusPeriodically).toHaveBeenCalledWith(
-                'ServerPlus', 
-                { appVersion: 'v3.12', serverStayAliveInSecs: 10, serverStayAliveTimeoutInSecs: 30 }
-            );
         });
     });
 

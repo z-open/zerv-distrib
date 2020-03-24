@@ -31,6 +31,7 @@ describe('server status service', () => {
 
         onChanges = {};
         spyOn(zerv, 'onChanges').and.callFake((event, fn) => onChanges[event] = fn);
+        service.setZervDependency(zerv);
     });
 
 
@@ -42,6 +43,16 @@ describe('server status service', () => {
         const fn = onChanges[dataEvent];
         fn && fn(tenantId, obj, 'update');
     }
+
+    it('should launch scheduler to notify server status periodically', () => {
+        spyOn(service, 'notifyServerStatusPeriodically');
+        service.monitorServerStatus('ServerPlus', 'v3.12', { serverStayAliveInSecs: 10, serverStayAliveTimeoutInSecs: 30});
+        expect(service.notifyServerStatusPeriodically).toHaveBeenCalled();
+        expect(service.notifyServerStatusPeriodically).toHaveBeenCalledWith(
+            'ServerPlus', 
+            { appVersion: 'v3.12', serverStayAliveInSecs: 10, serverStayAliveTimeoutInSecs: 30 }
+        );
+    });
 
     it('should create a server status instance', () => {
         service.listenToServerStatusData(zerv);
@@ -70,8 +81,7 @@ describe('server status service', () => {
     });
 
     it('should set the zerv id with the created server status instance', () => {
-        service.listenToServerStatusData(zerv);
-        const serverStatus = service.createOne('superServer', 'appV1.2', 10);
+        const serverStatus = service.monitorServerStatus('superServer', 'appV1.2');
         expect(serverStatus.id).toEqual(zerv.getServerId());
     });
 
@@ -139,10 +149,10 @@ describe('server status service', () => {
         let serverStatusJson;
         beforeEach(() => {
             zerv.stopLocalServer = _.noop;
+            service.setZervDependency(zerv);
 
-            service.listenToServerStatusData(zerv);
 
-            const serverStatus = service.createOne('superServer', 'appV1.2', 10);
+            const serverStatus = service.monitorServerStatus('superServer', 'appV1.2');
             serverStatusJson = JSON.parse(JSON.stringify(serverStatus));
 
             // status of a different server
@@ -163,6 +173,7 @@ describe('server status service', () => {
         });
 
         it('should request shutdown of the local zerv instance', () => {
+            spyOn(zerv, 'stopLocalServer');
             notifyUpdate('cluster', 'SERVER_SHUTDOWN', {serverId: zerv.getServerId()});
             const statuses = service.findAll();
             expect(statuses.length).toBe(2);
@@ -171,8 +182,6 @@ describe('server status service', () => {
 
             expectedStatus.state = 'request shutdown';
             expectedStatus.revision = expectedStatus.revision + 1;
-
-
             expect(statuses[0]).toEqual(expectedStatus);
         });
     });
