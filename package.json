@@ -1,6 +1,6 @@
 {
     "name": "zerv-distrib",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Zerv module providing process load distribution support",
     "main": "lib/zerv-distrib.js",
     "keywords": [
