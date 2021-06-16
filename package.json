@@ -1,6 +1,6 @@
 {
     "name": "zerv-distrib",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "description": "Zerv module providing process load distribution support",
     "main": "lib/zerv-distrib.js",
     "keywords": [
@@ -26,7 +26,7 @@
         "ioredis": "4.14.1",
         "ioredis-lock": "4.0.0",
         "ip": "1.1.5",
-        "lodash": "4.17.15",
+        "lodash": "4.17.21",
         "moment": "2.24.0",
         "uuid": "3.4.0"
     },
@@ -34,8 +34,8 @@
         "eslint": "6.8.0",
         "eslint-config-google": "0.14.0",
         "jasmine": "3.7.0",
-        "zerv-core": "git://github.com/z-open/zerv-core#1.3.3",
-        "zerv-sync": "git://github.com/z-open/zerv-sync#1.2.3",
-        "zlog4js": "git://github.com/z-open/zlog#1.1.1"
+        "zerv-core": "git://github.com/z-open/zerv-core#1.3.4",
+        "zerv-sync": "git://github.com/z-open/zerv-sync#1.2.4",
+        "zlog4js": "git://github.com/z-open/zlog#1.1.2"
     }
 }
